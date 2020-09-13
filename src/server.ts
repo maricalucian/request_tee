@@ -1,17 +1,24 @@
 import http from "http"
+import https from "https"
 import urlParser from "url"
 import { endpoints, port } from "./config"
 
-const parsedEndpoints: http.ClientRequestArgs[] = endpoints.map((endpoint: string) => ({
-    ...urlParser.parse(endpoint),
-    agent: new http.Agent({ keepAlive: true, maxSockets: 10 }),
-}))
+const parsedEndpoints: http.ClientRequestArgs[] = endpoints.map((endpoint: string) => {
+    const urlOptions = urlParser.parse(endpoint)
+    return {
+        ...urlOptions,
+        agent:
+            urlOptions.protocol === "https:"
+                ? new https.Agent({ keepAlive: true, maxSockets: 10 })
+                : new http.Agent({ keepAlive: true, maxSockets: 10 }),
+    }
+})
 
 http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
     const { method, headers } = req
 
     const requests: http.ClientRequest[] = parsedEndpoints.map((options) =>
-        http
+        https
             .request({
                 agent: options.agent,
                 host: options.hostname,
@@ -26,6 +33,9 @@ http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
                 if (err.code !== "ECONNRESET") {
                     console.log(err)
                 }
+            })
+            .on("response", (r: any) => {
+                console.log(r)
             })
     )
 
