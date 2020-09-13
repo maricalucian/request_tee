@@ -7,18 +7,18 @@ const parsedEndpoints: http.ClientRequestArgs[] = endpoints.map((endpoint: strin
     const urlOptions = urlParser.parse(endpoint)
     return {
         ...urlOptions,
-        rejectUnauthorized: false,
         agent:
             urlOptions.protocol === "https:"
-                ? new https.Agent({ keepAlive: true, maxSockets: 10 })
-                : new http.Agent({ keepAlive: true, maxSockets: 10 }),
+                ? new https.Agent(/*{ keepAlive: true }*/)
+                : new http.Agent(/*{ keepAlive: true }*/),
     }
 })
 
 http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
     const { method, headers } = req
+    let data: Uint8Array[] = [];
 
-    const requests: http.ClientRequest[] = parsedEndpoints.map((options) =>{
+    const requests: http.ClientRequest[] = parsedEndpoints.map((options) => {
         return http
             .request({
                 agent: options.agent,
@@ -34,17 +34,22 @@ http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
                 console.log(err)
             })
             .on("response", (r: any) => {
-                console.log(r)
+                console.log(`${options.hostname}: ${r.statusCode} - ${r.statusMessage}`)
             })
-        }
-    )
+    })
 
     req.on("data", (chunk: any) => {
         requests.forEach((request: http.ClientRequest) => {
             request.write(chunk)
         })
+
+        data.push(chunk)
     }).on("end", () => {
+        const dataToSend = Buffer.concat(data).toString();
+        console.log("request data ", dataToSend);
+
         requests.forEach((request: any) => {
+            // request.write(dataToSend)
             request.end()
         })
     })
