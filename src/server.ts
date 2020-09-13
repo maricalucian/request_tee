@@ -22,8 +22,10 @@ http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
                 method,
                 headers,
             })
-            .on("error", (err) => {
-                console.log(err)
+            .on("error", (err: any) => {
+                if (err.code !== "ECONNRESET") {
+                    console.log(err)
+                }
             })
     )
 
