@@ -7,6 +7,7 @@ const parsedEndpoints: http.ClientRequestArgs[] = endpoints.map((endpoint: strin
     const urlOptions = urlParser.parse(endpoint)
     return {
         ...urlOptions,
+        rejectUnauthorized: false,
         agent:
             urlOptions.protocol === "https:"
                 ? new https.Agent({ keepAlive: true, maxSockets: 10 })
@@ -17,8 +18,8 @@ const parsedEndpoints: http.ClientRequestArgs[] = endpoints.map((endpoint: strin
 http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
     const { method, headers } = req
 
-    const requests: http.ClientRequest[] = parsedEndpoints.map((options) =>
-        https
+    const requests: http.ClientRequest[] = parsedEndpoints.map((options) =>{
+        return http
             .request({
                 agent: options.agent,
                 host: options.hostname,
@@ -27,16 +28,15 @@ http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
                 protocol: options.protocol,
                 auth: options.auth,
                 method,
-                headers,
+                headers: { ...headers, host: `${options.hostname}:${options.port}`},
             })
             .on("error", (err: any) => {
-                if (err.code !== "ECONNRESET") {
-                    console.log(err)
-                }
+                console.log(err)
             })
             .on("response", (r: any) => {
                 console.log(r)
             })
+        }
     )
 
     req.on("data", (chunk: any) => {
